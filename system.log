@@ -52,3 +52,20 @@
 2025-11-24 16:20:24,252 - INFO - North_India_Ops created sub-vendor Punjab_Hub
 2025-11-24 16:25:13,422 - INFO - Database connected successfully.
 2025-11-24 16:29:29,396 - INFO - Database connected successfully.
+2025-11-24 16:36:57,558 - INFO - Database connected successfully.
+2025-11-24 16:39:54,747 - INFO - Database connected successfully.
+2025-11-24 16:44:29,269 - INFO - Database connected successfully.
+2025-11-24 16:44:42,260 - [INFO] - Database connected successfully.
+2025-11-24 16:46:08,850 - [INFO] - PERFORMANCE: get_dashboard_data took 162.43ms
+2025-11-24 16:46:14,721 - [INFO] - PERFORMANCE: get_dashboard_data took 111.08ms
+2025-11-24 16:46:14,768 - [INFO] - Driver 69242ecf18139e03f3805017 status updated to Suspended
+2025-11-24 16:46:14,920 - [INFO] - PERFORMANCE: get_dashboard_data took 108.06ms
+2025-11-24 16:46:18,221 - [INFO] - PERFORMANCE: get_dashboard_data took 112.51ms
+2025-11-24 16:46:18,260 - [INFO] - Driver 69242ecf18139e03f3805017 status updated to Active
+2025-11-24 16:46:18,414 - [INFO] - PERFORMANCE: get_dashboard_data took 110.62ms
+2025-11-24 16:46:21,233 - [INFO] - PERFORMANCE: get_dashboard_data took 112.82ms
+2025-11-24 16:46:21,271 - [INFO] - Driver 69242ecf18139e03f3805017 status updated to Revoked
+2025-11-24 16:46:21,419 - [INFO] - PERFORMANCE: get_dashboard_data took 106.62ms
+2025-11-24 16:46:24,399 - [INFO] - PERFORMANCE: get_dashboard_data took 127.39ms
+2025-11-24 16:46:24,437 - [INFO] - Driver 69242ecf18139e03f3805017 status updated to Active
+2025-11-24 16:46:24,590 - [INFO] - PERFORMANCE: get_dashboard_data took 108.90ms
