@@ -1,10 +1,23 @@
-🚖 Vendor Fleet & Driver Onboarding SystemA comprehensive Role-Based Access Control (RBAC) system for managing multi-level vendor hierarchies, vehicle fleets, and driver onboarding.Built with Python, Streamlit, and MongoDB, this project is designed to demonstrate robust backend engineering principles, including strict OOPS architecture, Fault Tolerance, and Algorithmic Efficiency.🚀 Key FeaturesMulti-Level Vendor Hierarchy: Supports Super Vendors → Regional → City → Local Vendors.Role-Based Access Control (RBAC): Distinct dashboards and permissions for Super Vendors vs. Sub-Vendors.Delegated Authority: Super Vendors can dynamically grant permissions (e.g., "Approve Drivers") to specific sub-vendors.Real-Time Analytics: Centralized dashboard for monitoring fleet status and compliance.Fault Tolerance: Implements Singleton patterns and try-catch blocks to handle database outages gracefully.Secure Authentication: Uses bcrypt for password hashing and session management.🛠️ Tech StackFrontend: Streamlit (Rapid UI Development)Backend: Python 3.9+Database: MongoDB (NoSQL for Schema Flexibility)Validation: Pydantic (Data Integrity)Security: Bcrypt (Hashing)⚙️ Installation & SetupPrerequisitesPython 3.8 or higherMongoDB installed locally (running on port 27017) or a MongoDB Atlas URI.StepsClone the Repositorygit clone [https://github.com/yourusername/vendor-onboarding-system.git](https://github.com/yourusername/vendor-onboarding-system.git)
-cd vendor-onboarding-system
-Install Dependenciespip install streamlit pymongo bcrypt pydantic pandas
-Run the Applicationstreamlit run app.py
-First-Time LoginOn the login screen, check the box "Dev Tools: Seed Data".Click "Create Demo Super Vendor".Login with:Username: adminPassword: admin123📂 Project Structure├── app.py                  # Main Streamlit Frontend Application
-├── backend.py              # Core Logic (OOPS, DB Connections, Models)
-├── system.log              # System Monitoring Logs (Auto-generated)
-├── requirements.txt        # Python dependencies
-└── Project_Documentation.md # Implementation Details
-🧠 System Design & Interview Case StudyThis project was built to address specific engineering challenges. Below is the technical breakdown.1. Object-Oriented Design (OOPS)The system uses a strict class-based architecture to ensure modularity.Abstraction: SystemUser is an abstract base class defining the core interface.Inheritance: SuperVendor and Vendor inherit from SystemUser, sharing common logic while implementing specific behaviors.Polymorphism: The get_dashboard_data() method adapts its behavior based on the user role (Global stats for Super Vendor vs. Local data for Standard Vendor).2. Time & Space Complexity AnalysisSpace Complexity: * Hierarchical Storage: We utilize a "Materialized Path" or parent_id reference strategy. Storing the hierarchy references is O(N) space, where N is the number of users.Vehicle Data: Embedded document schema reduces the need for expensive joins, optimizing read performance.Time Complexity:Dashboard Aggregation: Instead of recursive application-side loops (which would be O(N^2) in worst-case depth), we use MongoDB Aggregation Pipelines ($graphLookup logic) to fetch hierarchy stats in near O(1) application time (delegating complexity to the efficient DB engine).3. Fault Tolerance & ReliabilitySingleton Database Connection: The DatabaseManager class ensures only one active connection exists, preventing connection pool exhaustion.Graceful Degradation: All DB interactions are wrapped in try-except blocks. If the database goes offline, the UI displays a user-friendly error rather than crashing the entire application.4. System MonitoringLogging: A system.log file tracks critical events (Login attempts, Driver Onboarding, Errors).Caching: Streamlit's @st.cache_data is used for expensive dashboard computations, reducing database load and improving frontend responsiveness.⚖️ Architectural Trade-offsDecisionAlternativeWhy we chose this?StreamlitReact/MERNPros: Rapid prototyping, native Python integration for analytics.  Cons: Less UI customization than React.MongoDBPostgreSQLPros: Schema flexibility allows adding new vehicle document types without migrations.  Cons: Eventual consistency model vs SQL ACID properties.PydanticManual ChecksPros: Industry-standard runtime validation ensures clean data enters the DB.
+# Vendor Cab and Driver Onboarding: Hierarchical Fleet Management System
+
+## Project Overview
+This project demonstrates a robust, Python-based fleet management platform designed for hierarchical vendor networks. It allows a "Super Vendor" (National level) to recruit regional vendors, who can recruit city vendors, creating a recursive management tree. 
+
+The system handles driver/vehicle onboarding, compliance checks, and operational dashboards.
+
+## Key Features
+* **N Level Hierarchy:** N-level depth for vendor management (National -> Regional -> City -> Local).
+* **Role-Based Access Control (RBAC):** Distinct dashboards for Super Vendors vs. Sub-Vendors.
+* **Object-Oriented Architecture (OOP):** Built on strong OOP principles including Inheritance (Vendor inherits SystemUser) and Polymorphism for maintainable, modular code.
+* **System Monitoring & Logging:** Integrated real-time system health dashboard that tracks performance metrics and live execution logs (e.g., response times).
+* **Resiliency & Fault Tolerance:** Implements automatic Retry Logic with exponential backoff for database failures and custom exception handling for robust error recovery.
+* **Performance Optimization (Cost Estimation):** Utilizes TTL Caching and batch queries ($in) to reduce Time Complexity from $O(N^k)$ to $O(N)$.
+* **Automated Compliance Engine:** Proactively monitors and flags expirations for Driver Licenses, Vehicle RC, Permits, and Pollution certificates.
+* **Architectural Transparency:** dedicated UI tab explicitly documenting system Trade-offs and Time/Space Complexity analysis.
+* **Resiliency:** Automatic DB retry logic and transaction safety mechanisms.
+
+## Tech Stack
+* **Language:** Python 3.9+
+* **Frontend:** Streamlit
+* **Database:** MongoDB (Atlas or Local)
+* **Libraries:** `pymongo`, `bcrypt`, `pydantic`, `pandas`
