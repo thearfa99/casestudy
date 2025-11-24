@@ -112,3 +112,7 @@
 2025-11-24 18:42:22,702 - [INFO] - PERFORMANCE: get_dashboard_data took 145.82ms
 2025-11-24 18:42:22,777 - [INFO] - Driver 69242ecf18139e03f380501b status updated to Active
 2025-11-24 18:42:22,966 - [INFO] - PERFORMANCE: get_dashboard_data took 131.80ms
+2025-11-24 18:56:46,627 - [INFO] - Database connected successfully.
+2025-11-24 18:57:30,430 - [INFO] - PERFORMANCE: get_dashboard_data took 262.47ms
+2025-11-24 19:00:50,930 - [INFO] - Database connected successfully.
+2025-11-24 19:00:59,839 - [INFO] - PERFORMANCE: get_dashboard_data took 322.11ms

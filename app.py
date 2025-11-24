@@ -8,39 +8,57 @@ from datetime import datetime
 from bson.objectid import ObjectId
 from pydantic import ValidationError
 
+# --- CONFIGURATION ---
+# Sets the browser tab title and layout mode. 
 st.set_page_config(page_title="Vendor Management System", layout="wide")
 
-# --- DB CONNECTION ---
+# --- DB CONNECTION HANDLER ---
+# Streamlit reruns the entire script on every interaction. 
+# We use session_state to ensure we don't reconnect to MongoDB on every button click.
 if 'db_connected' not in st.session_state:
     st.session_state['db_connected'] = False
 
 def init_connection():
+    """
+    Establishes connection to MongoDB.
+    Priority 1: Checks for 'MONGO_URI' in .streamlit/secrets.toml (Production/Secure).
+    Priority 2: Asks user for URI in the Sidebar (Dev/Testing).
+    """
     db_manager = DatabaseManager()
+    
+    # Check local secrets first
     if "MONGO_URI" in st.secrets:
         if db_manager.connect(st.secrets["MONGO_URI"]):
             st.session_state['db_connected'] = True
             return db_manager.db
+            
+    # Fallback to manual entry in UI
     with st.sidebar:
         st.header("Database Connection")
         uri = st.text_input("Enter Mongo URI", type="password")
         if st.button("Connect"): 
             if db_manager.connect(uri):
                 st.session_state['db_connected'] = True
-                st.rerun()
+                st.rerun() # Force refresh to load the app with new connection
             else:
                 st.error("Connection failed.")
     return None
 
+# Initialize or retrieve existing connection
 if st.session_state['db_connected']:
     db = DatabaseManager().db
 else:
     db = init_connection()
     if db is None: 
         st.info("Please connect to the database to proceed.")
-        st.stop()
+        st.stop() # Halts execution here until DB is connected
 
-# --- AUTH ---
+# --- AUTHENTICATION LOGIC ---
 def login_page():
+    """
+    Handles User Login and Super Vendor Registration.
+    Uses UserFactory to instantiate the correct class based on role data.
+    """
     st.markdown("## Fleet Management System")
     
     tab1, tab2 = st.tabs(["Login", "Register Super Vendor"])
@@ -49,16 +67,24 @@ def login_page():
         with st.form("login_form"):
             username = st.text_input("Username")
             password = st.text_input("Password", type="password")
+            
             if st.form_submit_button("Login"):
                 try:
+                    # 1. Fetch raw JSON data from MongoDB
                     user_data = db.users.find_one({"username": username})
+                    
                     if user_data:
+                        # 2. OOPS Pattern: Factory Method.
+                        # Converts raw data into a specific Object (SuperVendor or SubVendor)
+                        # allowing us to call methods like user.get_dashboard_data() polymorphically.
                         user_obj = UserFactory.get_user(user_data, db)
+                        
                         if user_obj:
+                            # 3. Verify Hash
                             if user_obj.verify_password(password, user_data['password']):
                                 st.session_state['user'] = user_obj
                                 st.session_state['logged_in'] = True
-                                st.rerun()
+                                st.rerun() # Refresh to show dashboard
                             else: st.error("Wrong password")
                         else: st.error("Account Suspended or Invalid Role.")
                     else: st.error("User not found")
@@ -66,18 +92,21 @@ def login_page():
                     st.error(f"System Error: {str(e)}")
 
     with tab2:
+        # Registration for the "Root" of the hierarchy tree.
         st.info("Start a new isolated fleet hierarchy. Password must be 7+ characters, alphanumeric.")
         with st.form("register_form"):
             new_u = st.text_input("Choose Username")
             new_p = st.text_input("Choose Password", type="password", help="Min 7 chars, letters & numbers")
             
             if st.form_submit_button("Sign Up as Super Vendor"):
+                # Calls backend utility to create the root node
                 success, msg = register_new_super_vendor(new_u, new_p, db)
                 if success:
                     st.success(msg)
                 else:
                     st.error(msg)
 
+    # Developer Shortcut (Seed Data) - remove before production
     st.divider()
     with st.expander("Dev Tools (Seed Data)"):
         if st.button("Seed Default Admin"):
@@ -94,11 +123,16 @@ def login_page():
                 st.success("Created admin/admin123")
             except: st.warning("Admin likely exists.")
 
-# --- SUPER VENDOR UI ---
+# --- SUPER VENDOR UI (ROOT NODE) ---
 def super_vendor_dashboard(user):
+    """
+    Dashboard for the top-level manager. 
+    Focuses on aggregations, analytics, and compliance across the entire tree.
+    """
     st.title(f"{user.username}'s Command Center")
     
     try:
+        # Heavy lifting: This method recursively crawls the tree in backend.py
         data = user.get_dashboard_data()
     except DatabaseError as e:
         st.error(f"Critical System Failure: {str(e)}")
@@ -106,20 +140,21 @@ def super_vendor_dashboard(user):
 
     analytics = data.get('analytics', {}) 
     
-    # Top Metrics Row
+    # --- KPI ROW ---
     c1, c2, c3, c4 = st.columns(4)
     c1.metric("Total Vehicles", data['total_vehicles'])
     c2.metric("Total Drivers", analytics.get('total_drivers', 0))
     c3.metric("Sub-Vendors", data['total_vendors'])
     c4.metric("Compliance Alerts", data['compliance_issues_count'], delta_color="inverse")
 
-    # 5. TRADE-OFFS & 6. MONITORING (New Tabs)
+    # Navigation Tabs
     tabs = st.tabs(["Analytics", "Network", "Compliance", "Approvals", "Delegation", "System Health", "Architecture"])
 
     with tabs[0]:
         st.subheader("Fleet Operations Overview")
         col1, col2 = st.columns(2)
         with col1:
+            # Visualizing load distribution
             st.markdown("### Drivers per Vendor (Load)")
             if analytics.get('drivers_by_vendor'):
                 st.bar_chart(analytics['drivers_by_vendor'])
@@ -134,14 +169,17 @@ def super_vendor_dashboard(user):
 
     with tabs[1]:
         st.subheader("Sub-Vendor Network")
+        # Display flattened list of all vendors in the hierarchy
         if data['sub_vendors_list']:
             df = pd.DataFrame(data['sub_vendors_list'])
+            # Handling missing columns safely
             if 'status' not in df.columns: df['status'] = 'Active'
             if 'parent_name' not in df.columns: df['parent_name'] = 'N/A'
             st.dataframe(df[['username', 'level', 'status', 'parent_name']])
         else:
             st.info("No sub-vendors in your network.")
         
+        # Action: Add immediate children (Regional Managers)
         with st.expander("Register New Vendor"):
              with st.form("super_create"):
                 u = st.text_input("Username"); p = st.text_input("Password", type="password")
@@ -154,7 +192,7 @@ def super_vendor_dashboard(user):
     with tabs[2]:
         st.header("System Compliance & Overrides")
         
-        # SECTION 1: Vehicle Compliance 
+        # COMPLIANCE: Super Vendors can override/disable unsafe vehicles
         st.subheader("Non-Compliant Vehicles (Action Required)")
         bad_vehicles = data.get('non_compliant_vehicles', [])
         
@@ -169,6 +207,7 @@ def super_vendor_dashboard(user):
                         st.error(f"Issues: {v['compliance_issues']}")
                         st.caption(f"Status: {v.get('status', 'Unknown')}")
                     with c3:
+                        # Action Button Logic
                         if v.get('status') != 'Disabled':
                             if st.button("Disable", key=f"dis_{v['_id']}"):
                                 user.disable_vehicle(v['_id']) 
@@ -180,7 +219,6 @@ def super_vendor_dashboard(user):
 
         st.divider()
 
-        # SECTION 2: Driver Compliance
         st.subheader("Expired Driver Licenses")
         if data['expired_driver_list']:
             exp_df = pd.DataFrame(data['expired_driver_list'])
@@ -190,6 +228,7 @@ def super_vendor_dashboard(user):
 
     with tabs[3]:
         st.subheader("Pending Approvals")
+        # Fetch drivers marked as 'Pending' from backend
         pending = user.get_pending_drivers()
         if pending:
             for d in pending:
@@ -204,6 +243,7 @@ def super_vendor_dashboard(user):
 
     with tabs[4]:
         st.subheader("Delegate Authority")
+        # RBAC: Super Vendor can grant specific capabilities to sub-vendors
         if data['sub_vendors_list']:
             sub = st.selectbox("Select Vendor", [u['username'] for u in data['sub_vendors_list']])
             perm = st.selectbox("Permission", ["manage_payments", "booking_management", "view_reports", "compliance_audit"])
@@ -212,22 +252,20 @@ def super_vendor_dashboard(user):
                 if s: st.success(m)
         else: st.info("No sub-vendors.")
 
-    # --- 6. SYSTEM MONITORING UI ---
     with tabs[5]:
         st.subheader("🖥️ System Health & Monitoring")
         col_m1, col_m2 = st.columns(2)
         with col_m1:
             st.info("System Logs (Live)")
-            logs = user.get_system_logs(limit=20)
+            logs = user.get_system_logs(limit=20) # Mock logs from backend
             st.code("\n".join(logs), language="text")
         with col_m2:
             st.success("Performance Metrics")
-            st.write("Response times tracked via @performance_monitor.")
             st.metric("DB Connection", "Active", "Stable")
             st.metric("Cache Hit Rate", "High", "Optimized")
 
-    # --- 5. TRADE-OFFS & 2. COST ESTIMATION UI ---
     with tabs[6]:
+        # Academic/Project Requirement: Showing the 'Why' behind the code
         st.subheader("📐 System Architecture & Trade-offs")
         st.markdown("### Complexity Analysis")
         complexity = user.get_complexity_analysis()
@@ -235,20 +273,26 @@ def super_vendor_dashboard(user):
 
         st.markdown("### Implementation Trade-offs")
         st.info("""
-        1. **Recursion vs. Flat Structure:** - *Decision:* Used Recursion for hierarchy.
-           - *Trade-off:* Easier code/logic, but potential stack overflow on massive depth. *Mitigation:* Implemented caching.
+        1. **Recursion vs. Flat Structure:** - *Decision:* Used Recursion for hierarchy traversal.
+           - *Trade-off:* Simpler logic for infinite depth, but risk of stack overflow on massive scale. 
+           - *Mitigation:* Implemented caching strategies.
         2. **Consistency vs. Availability:**
-           - *Decision:* Prioritized Availability (Retry Logic).
-           - *Trade-off:* Slight delay in data propagation (Eventual Consistency) in distributed modes.
+           - *Decision:* Prioritized Availability (Retry Logic in DB connections).
+           - *Trade-off:* Eventual consistency in distributed reporting.
         3. **Soft Deletes:**
-           - *Decision:* Records are marked 'Suspended' rather than deleted.
-           - *Benefit:* Audit trail preserved. *Cost:* Increased storage size over time.
+           - *Decision:* Records are marked 'Suspended/Disabled' rather than deleted.
+           - *Benefit:* Preserves audit trails. *Cost:* Storage growth over time.
         """)
 
-# --- SUB VENDOR UI (Recursive) ---
+# --- SUB VENDOR UI (CHILD NODES) ---
 def sub_vendor_dashboard(user):
+    """
+    Dashboard for Regional, City, or Local vendors.
+    Features restricted based on hierarchy level.
+    """
     st.title(f"{user.level} Vendor: {user.username}")
     
+    # Display active permissions granted by Super Vendor
     if user.delegated_permissions:
         st.success(f"Active Delegations: {', '.join(user.delegated_permissions)}")
     else:
@@ -258,14 +302,13 @@ def sub_vendor_dashboard(user):
     t1, t2, t3 = st.tabs(tabs)
 
     with t1:
-        # Metrics Row
+        # --- METRICS ---
         try:
             data = user.get_dashboard_data()
         except DatabaseError as e:
              st.error("Connection Error. Auto-retrying..."); time.sleep(2); st.rerun()
 
         c1, c2, c3 = st.columns(3)
-        
         c1.metric("Network Drivers", data.get('total_network_drivers', 0))
         sub_vendors_count = len(data.get('sub_vendors', []))
         c2.metric("Direct Sub-Vendors", sub_vendors_count)
@@ -273,13 +316,13 @@ def sub_vendor_dashboard(user):
 
         st.divider()
         
-        # --- INTERACTIVE FLEET MANAGER ---
+        # --- DRIVER MANAGEMENT (CRUD) ---
         st.subheader("Fleet Management")
-        
         drivers_list = data.get('drivers', [])
         
         if drivers_list:
             for d in drivers_list:
+                # Status Indicators
                 status_color = "🟢" if d.get('status') == 'Active' else "🔴"
                 if d.get('status') == 'Revoked': status_color = "⚫"
                 
@@ -287,7 +330,6 @@ def sub_vendor_dashboard(user):
                 
                 with st.expander(f"{status_color} {d['name']} ({owner})"):
                     col_a, col_b = st.columns([3, 2])
-                    
                     with col_a:
                         st.write(f"**License:** {d['license_number']}")
                         st.write(f"**Phone:** {d['phone']}")
@@ -296,6 +338,7 @@ def sub_vendor_dashboard(user):
                     
                     with col_b:
                         st.write("**Actions:**")
+                        # State Machine Transitions (Active -> Suspended/Revoked)
                         if d.get('status') == 'Active':
                             if st.button("Suspend Driver", key=f"sus_{d['_id']}"):
                                 user.update_driver_status(d['_id'], "Suspended")
@@ -312,6 +355,7 @@ def sub_vendor_dashboard(user):
 
         st.divider()
         
+        # --- DATA ENTRY FORMS WITH VALIDATION ---
         with st.expander("Onboard New Driver/Vehicle"):
             c1, c2 = st.columns(2)
             
@@ -326,10 +370,11 @@ def sub_vendor_dashboard(user):
                     
                     if st.form_submit_button("Add Driver"):
                         try:
-                            # 1. Try to create the model (Pydantic validation happens here)
+                            # 1. Data Validation Layer (Pydantic)
+                            # This ensures no bad data (like short names or invalid dates) enters the logic
                             d_mod = DriverModel(name=dn, license_number=dl, phone=dp, dl_expiry=str(de))
                             
-                            # 2. If valid, attempt onboarding
+                            # 2. Business Logic Layer
                             s, m = user.onboard_driver(d_mod)
                             if s: 
                                 st.success(m)
@@ -339,10 +384,10 @@ def sub_vendor_dashboard(user):
                                 st.error(m)
                                 
                         except ValidationError as e:
-                            # 3. Catch Pydantic errors and format them nicely
+                            # 3. User-Friendly Error Reporting
                             st.error("❌ **Please fix the following errors:**")
                             for err in e.errors():
-                                # cleanup field name: 'license_number' -> 'License Number'
+                                # Clean up technical field names for display
                                 field = str(err['loc'][0]).replace('_', ' ').title()
                                 msg = err['msg']
                                 st.warning(f"**{field}:** {msg}")
@@ -364,6 +409,7 @@ def sub_vendor_dashboard(user):
                     
                     if st.form_submit_button("Add Vehicle"):
                         try:
+                            # Validating complex vehicle constraints
                             v_mod = VehicleModel(
                                 reg_number=vr, model=vm, capacity=vc, fuel_type=vf, 
                                 rc_expiry=str(re), pollution_expiry=str(pe), permit_expiry=str(prm)
@@ -387,33 +433,43 @@ def sub_vendor_dashboard(user):
                             st.error(f"System Error: {str(e)}")
 
     with t2:
+        # --- DELEGATED TASKS ---
+        # Functionality here is unlocked only if Super Vendor granted permission.
         st.subheader("Delegated Operational Tasks")
         has_any_permission = False
+        
         if "manage_payments" in user.delegated_permissions:
             has_any_permission = True
             with st.container(border=True):
                 st.markdown("### Payment Gateway")
                 if st.button("Process Batch Payments"): st.success("Paid.")
+        
         if "booking_management" in user.delegated_permissions:
             has_any_permission = True
             with st.container(border=True):
                 st.markdown("### Booking Dispatch")
                 if st.button("Auto-Dispatch"): st.info("Dispatched.")
+        
         if "view_reports" in user.delegated_permissions:
             has_any_permission = True
             with st.container(border=True):
                 st.markdown("### Network Reports")
                 st.download_button("Download Report", "data.csv")
+        
         if "compliance_audit" in user.delegated_permissions:
             has_any_permission = True
             with st.container(border=True):
                 st.markdown("### Compliance Audit")
                 if st.button("Run Audit"): st.warning("Issues found.")
+        
         if not has_any_permission: st.warning("No tasks delegated.")
 
     with t3:
+        # --- HIERARCHY ENFORCEMENT ---
+        # Defines who can create whom. 
         hierarchy_map = {"Regional": "City", "City": "Local", "Local": None}
         allowed_child = hierarchy_map.get(user.level)
+        
         if allowed_child:
             st.subheader(f"Create Child Vendor ({allowed_child})")
             with st.form("create_child"):
@@ -422,21 +478,25 @@ def sub_vendor_dashboard(user):
                     s, m = user.create_sub_vendor(cu, cp, allowed_child)
                     if s: st.success(m); st.rerun()
                     else: st.error(m)
+            
             st.write("#### My Sub-Vendors")
             if data.get('sub_vendors'):
                 df = pd.DataFrame(data['sub_vendors'])
                 cols = ['username', 'level', 'status', 'created_at']
+                # Ensure columns exist before plotting
                 for c in cols: 
                     if c not in df.columns: df[c] = 'N/A'
                 st.dataframe(df[cols])
-        else: st.info("Local Vendors cannot create sub-vendors.")
+        else: 
+            st.info("Local Vendors represent the leaf nodes and cannot create further sub-vendors.")
         
-# --- MAIN ---
+# --- MAIN EXECUTION BLOCK ---
 if 'logged_in' not in st.session_state: st.session_state['logged_in'] = False
 
 if not st.session_state['logged_in']:
     login_page()
 else:
+    # User is logged in, show the Sidebar and the appropriate dashboard
     user = st.session_state['user']
     with st.sidebar:
         st.write(f"User: **{user.username}**")
@@ -445,6 +505,7 @@ else:
             st.session_state['logged_in'] = False
             st.rerun()
     
+    # Polymorphism in UI: Render view based on user role
     if user.role == "super_vendor":
         super_vendor_dashboard(user)
     else:
