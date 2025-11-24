@@ -20,3 +20,16 @@
 2025-11-24 14:33:20,511 - INFO - SuperVendor admin approved driver 69241cc615e6a9618692bb5c
 2025-11-24 14:33:38,275 - INFO - Dashboard fetch for Bangalore_Cabs took 0.0779s
 2025-11-24 14:33:42,831 - INFO - Database connected successfully.
+2025-11-24 14:37:36,372 - INFO - Database connected successfully.
+2025-11-24 14:38:06,748 - INFO - Database connected successfully.
+2025-11-24 14:39:51,763 - INFO - Database connected successfully.
+2025-11-24 14:42:05,274 - INFO - Database connected successfully.
+2025-11-24 14:46:24,290 - INFO - Database connected successfully.
+2025-11-24 14:54:03,570 - INFO - Database connected successfully.
+2025-11-24 14:54:42,208 - INFO - New Super Vendor registered: Arfa
+2025-11-24 14:56:11,208 - INFO - Arfa created sub-vendor Karnataka_Cabs
+2025-11-24 14:56:29,696 - INFO - Arfa created sub-vendor Bangalore_Cabs
+2025-11-24 14:58:42,796 - INFO - Karnataka_Cabs created sub-vendor Tumkur_Cabs
+2025-11-24 15:00:59,758 - INFO - Database connected successfully.
+2025-11-24 15:05:10,494 - INFO - Database connected successfully.
+2025-11-24 15:09:14,246 - INFO - Database connected successfully.
