@@ -1,2 +1,22 @@
 2025-11-24 11:20:34,614 - INFO - Database connected successfully.
 2025-11-24 11:28:49,333 - INFO - Database connected successfully.
+2025-11-24 14:12:42,718 - INFO - Database connected successfully.
+2025-11-24 14:14:34,455 - INFO - SuperVendor admin created new vendor Bangalore_Cabs
+2025-11-24 14:15:51,924 - INFO - Dashboard fetch for Bangalore_Cabs took 0.0878s
+2025-11-24 14:16:03,309 - INFO - Dashboard fetch for Bangalore_Cabs took 0.0898s
+2025-11-24 14:16:03,370 - INFO - Driver  onboarded by Bangalore_Cabs
+2025-11-24 14:17:26,713 - INFO - Database connected successfully.
+2025-11-24 14:17:42,487 - INFO - Dashboard fetch for Bangalore_Cabs took 0.0874s
+2025-11-24 14:21:07,522 - INFO - Database connected successfully.
+2025-11-24 14:21:46,405 - INFO - Dashboard fetch for Bangalore_Cabs took 0.0852s
+2025-11-24 14:22:22,720 - INFO - Dashboard fetch for Bangalore_Cabs took 0.0870s
+2025-11-24 14:22:22,759 - INFO - Driver Arfa onboarded by Bangalore_Cabs
+2025-11-24 14:22:26,518 - INFO - Database connected successfully.
+2025-11-24 14:22:38,279 - INFO - Dashboard fetch for Bangalore_Cabs took 0.0841s
+2025-11-24 14:28:17,363 - INFO - Database connected successfully.
+2025-11-24 14:28:49,499 - ERROR - Error approving driver: name 'ObjectId' is not defined
+2025-11-24 14:28:56,989 - ERROR - Error approving driver: name 'ObjectId' is not defined
+2025-11-24 14:33:07,778 - INFO - Database connected successfully.
+2025-11-24 14:33:20,511 - INFO - SuperVendor admin approved driver 69241cc615e6a9618692bb5c
+2025-11-24 14:33:38,275 - INFO - Dashboard fetch for Bangalore_Cabs took 0.0779s
+2025-11-24 14:33:42,831 - INFO - Database connected successfully.

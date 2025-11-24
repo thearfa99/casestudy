@@ -8,10 +8,6 @@ import time
 # --- SETUP & CONFIG ---
 st.set_page_config(page_title="VendorFleet Onboarding", layout="wide")
 
-# --- MONGODB CONNECTION HANDLING ---
-# 1. Try to get secrets (Best Practice for deploying)
-# 2. If no secrets, show Sidebar Input (Best Practice for Interview Demo)
-
 if 'db_connected' not in st.session_state:
     st.session_state['db_connected'] = False
 
@@ -89,7 +85,7 @@ def login(username, password):
 
 # --- UI COMPONENTS ---
 def login_page():
-    st.markdown("## 🔒 Vendor Portal Login")
+    st.markdown("## Vendor Portal Login")
     with st.form("login_form"):
         username = st.text_input("Username")
         password = st.text_input("Password", type="password")
@@ -124,38 +120,97 @@ def login_page():
 def super_vendor_dashboard(user):
     st.title(f"🚀 Super Vendor Control Center")
     
+    # 1. Refresh Metrics
+    # We invalidate cache here to ensure count updates immediately after approval
+    st.cache_data.clear() 
     stats = fetch_system_stats()
+    
     col1, col2, col3 = st.columns(3)
     col1.metric("Active Vehicles", stats['active_fleets'])
     col2.metric("Pending Verifications", stats['pending_docs'])
     col3.metric("System Health", "Online 🟢")
 
-    st.subheader("Manage Sub-Vendors")
+    st.subheader("Hierarchy Management")
     data = user.get_dashboard_data()
     
-    tab1, tab2 = st.tabs(["Overview", "Delegation"])
+    # --- UPDATED TABS: Added 'Approvals' ---
+    tab1, tab2, tab3, tab4 = st.tabs(["Overview", "Create Vendor", "Delegation", "📝 Approvals"])
     
     with tab1:
+        st.write("### Sub-Vendor Network Breakdown")
         if data['level_breakdown']:
             df = pd.DataFrame(data['level_breakdown'])
             st.bar_chart(df.set_index('_id'))
         else:
             st.info("No sub-vendor data available.")
+
+        st.write("### Active Sub-Vendors")
+        if data.get('sub_vendors_list'):
+            vendors_df = pd.DataFrame(data['sub_vendors_list'])
+            st.dataframe(vendors_df[['username', 'level', 'role']])
             
     with tab2:
-        st.write("Delegate permissions to Sub-Vendors")
-        sub_vendor = st.text_input("Sub Vendor Username")
-        perm = st.selectbox("Permission", ["approve_drivers", "manage_payments", "view_reports"])
-        if st.button("Grant Permission"):
-            success, msg = user.delegate_access(sub_vendor, perm)
-            if success: st.success(msg)
-            else: st.error(msg)
+        st.write("### ➕ Register New Sub-Vendor")
+        with st.form("create_vendor_form"):
+            new_user = st.text_input("Username")
+            new_pass = st.text_input("Password", type="password")
+            new_level = st.selectbox("Vendor Level", ["Regional", "City", "Local"])
+            
+            if st.form_submit_button("Create Vendor"):
+                success, msg = user.create_sub_vendor(new_user, new_pass, new_level)
+                if success:
+                    st.success(msg)
+                    time.sleep(1)
+                    st.rerun()
+                else:
+                    st.error(msg)
+            
+    with tab3:
+        st.write("### 🔑 Access Control")
+        # Check if list exists to avoid errors
+        vendor_list = [u['username'] for u in data.get('sub_vendors_list', [])]
+        if vendor_list:
+            sub_vendor = st.selectbox("Select Sub Vendor", vendor_list)
+            perm = st.selectbox("Permission", ["approve_drivers", "manage_payments", "view_reports"])
+            if st.button("Grant Permission"):
+                success, msg = user.delegate_access(sub_vendor, perm)
+                if success: st.success(msg)
+                else: st.error(msg)
+        else:
+            st.warning("No sub-vendors created yet.")
+
+    # --- NEW TAB: APPROVALS ---
+    with tab4:
+        st.write("### ⏳ Pending Driver Approvals")
+        pending_drivers = user.get_pending_drivers()
+        
+        if pending_drivers:
+            for driver in pending_drivers:
+                # Create a card-like layout for each driver
+                with st.expander(f"🚦 {driver['name']} (License: {driver['license_number']})"):
+                    c1, c2 = st.columns([3, 1])
+                    with c1:
+                        st.write(f"**Phone:** {driver['phone']}")
+                        st.write(f"**Vendor ID:** {driver.get('vendor_id', 'N/A')}")
+                        st.write(f"**Status:** {driver['status']}")
+                    with c2:
+                        # Unique key needed for buttons in loops
+                        if st.button("✅ Approve", key=f"btn_{driver['_id']}"):
+                            success, msg = user.approve_driver(driver['_id'])
+                            if success:
+                                st.success(msg)
+                                time.sleep(1)
+                                st.rerun()
+                            else:
+                                st.error(msg)
+        else:
+            st.success("No pending approvals. All drivers verified! 🎉")
 
 def sub_vendor_dashboard(user):
-    st.title(f"📍 Vendor Dashboard ({user.level})")
+    st.title(f"Vendor Dashboard ({user.level})")
     
     if "approve_drivers" in user.delegated_permissions:
-        st.info("🌟 You have delegated authority to Approve Drivers")
+        st.info("You have delegated authority to Approve Drivers")
 
     tab1, tab2, tab3 = st.tabs(["My Fleet", "Onboard Driver", "Upload Docs"])
     data = user.get_dashboard_data()

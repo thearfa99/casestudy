@@ -6,6 +6,7 @@ from datetime import datetime
 from typing import List, Optional, Dict
 import time
 import logging
+from bson.objectid import ObjectId
 
 # --- LOGGING (Evaluation Point 6: System Monitoring) ---
 logging.basicConfig(
@@ -131,8 +132,34 @@ class SuperVendor(Vendor):
             "total_vendors": self.db.users.count_documents({"role": "vendor"}),
             "total_vehicles": self.db.vehicles.count_documents({}),
             "total_drivers": self.db.drivers.count_documents({}),
-            "level_breakdown": stats
+            "level_breakdown": stats,
+            "sub_vendors_list": list(self.db.users.find({"role": "vendor"}))
         }
+
+    def create_sub_vendor(self, username, password, level):
+        try:
+            # Check if exists
+            if self.db.users.find_one({"username": username}):
+                return False, "Username already exists."
+            
+            # Hash password
+            hashed = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt())
+            
+            user_doc = {
+                "username": username,
+                "password": hashed,
+                "role": "vendor",
+                "level": level,
+                "parent_id": self.user_id, # Linking hierarchy
+                "permissions": [],
+                "created_at": datetime.now()
+            }
+            self.db.users.insert_one(user_doc)
+            logging.info(f"SuperVendor {self.username} created new vendor {username}")
+            return True, f"Vendor '{username}' created successfully."
+        except Exception as e:
+            logging.error(f"Error creating vendor: {e}")
+            return False, str(e)
 
     def delegate_access(self, sub_vendor_username, permission):
         try:
@@ -144,6 +171,26 @@ class SuperVendor(Vendor):
                 return True, "Permission granted."
             return False, "User not found or permission already exists."
         except Exception as e:
+            return False, str(e)
+
+    def get_pending_drivers(self):
+        """Fetch all drivers across the system who are not verified yet."""
+        # This demonstrates 'Super Vendor Visibility' (Case Study Point IV)
+        return list(self.db.drivers.find({"documents_verified": False}))
+
+    def approve_driver(self, driver_id):
+        """Override/Action control to approve a driver."""
+        try:
+            result = self.db.drivers.update_one(
+                {"_id": ObjectId(driver_id)},
+                {"$set": {"documents_verified": True, "status": "Active"}}
+            )
+            if result.modified_count > 0:
+                logging.info(f"SuperVendor {self.username} approved driver {driver_id}")
+                return True, "Driver approved successfully."
+            return False, "Driver not found."
+        except Exception as e:
+            logging.error(f"Error approving driver: {e}")
             return False, str(e)
 
 # Factory Pattern
