@@ -8,7 +8,7 @@ from datetime import datetime
 from bson.objectid import ObjectId
 from pydantic import ValidationError
 
-st.set_page_config(page_title="VendorFleet Ultimate", layout="wide")
+st.set_page_config(page_title="Vendor Management System", layout="wide")
 
 # --- DB CONNECTION ---
 if 'db_connected' not in st.session_state:

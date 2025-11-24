@@ -69,3 +69,46 @@
 2025-11-24 16:46:24,399 - [INFO] - PERFORMANCE: get_dashboard_data took 127.39ms
 2025-11-24 16:46:24,437 - [INFO] - Driver 69242ecf18139e03f3805017 status updated to Active
 2025-11-24 16:46:24,590 - [INFO] - PERFORMANCE: get_dashboard_data took 108.90ms
+2025-11-24 17:36:22,322 - [INFO] - Database connected successfully.
+2025-11-24 17:55:16,320 - [INFO] - PERFORMANCE: get_dashboard_data took 154.98ms
+2025-11-24 18:01:01,189 - [INFO] - PERFORMANCE: get_dashboard_data took 254.29ms
+2025-11-24 18:20:17,874 - [INFO] - PERFORMANCE: get_dashboard_data took 129.82ms
+2025-11-24 18:20:25,184 - [INFO] - PERFORMANCE: get_dashboard_data took 135.79ms
+2025-11-24 18:34:02,401 - [INFO] - Database connected successfully.
+2025-11-24 18:35:35,688 - [INFO] - Database connected successfully.
+2025-11-24 18:36:57,359 - [INFO] - PERFORMANCE: get_dashboard_data took 102.56ms
+2025-11-24 18:36:57,695 - [INFO] - Green_Fleet_HQ created sub-vendor Test
+2025-11-24 18:39:15,171 - [INFO] - PERFORMANCE: get_dashboard_data took 158.62ms
+2025-11-24 18:39:24,334 - [INFO] - PERFORMANCE: get_dashboard_data took 112.58ms
+2025-11-24 18:39:36,322 - [INFO] - PERFORMANCE: get_dashboard_data took 112.40ms
+2025-11-24 18:39:36,362 - [INFO] - Driver 69242ecf18139e03f3805017 status updated to Suspended
+2025-11-24 18:39:36,521 - [INFO] - PERFORMANCE: get_dashboard_data took 104.64ms
+2025-11-24 18:39:40,895 - [INFO] - PERFORMANCE: get_dashboard_data took 112.60ms
+2025-11-24 18:39:40,929 - [INFO] - Driver 69242ecf18139e03f3805017 status updated to Active
+2025-11-24 18:39:41,090 - [INFO] - PERFORMANCE: get_dashboard_data took 103.16ms
+2025-11-24 18:39:44,526 - [INFO] - PERFORMANCE: get_dashboard_data took 107.94ms
+2025-11-24 18:39:44,562 - [INFO] - Driver 69242ecf18139e03f3805017 status updated to Revoked
+2025-11-24 18:39:44,715 - [INFO] - PERFORMANCE: get_dashboard_data took 102.93ms
+2025-11-24 18:39:48,563 - [INFO] - PERFORMANCE: get_dashboard_data took 108.53ms
+2025-11-24 18:39:48,597 - [INFO] - Driver 69242ecf18139e03f3805017 status updated to Active
+2025-11-24 18:39:48,748 - [INFO] - PERFORMANCE: get_dashboard_data took 104.37ms
+2025-11-24 18:39:53,269 - [INFO] - PERFORMANCE: get_dashboard_data took 108.41ms
+2025-11-24 18:40:01,734 - [INFO] - PERFORMANCE: get_dashboard_data took 108.28ms
+2025-11-24 18:40:16,163 - [INFO] - PERFORMANCE: get_dashboard_data took 164.88ms
+2025-11-24 18:40:24,679 - [INFO] - PERFORMANCE: get_dashboard_data took 107.64ms
+2025-11-24 18:40:25,970 - [INFO] - PERFORMANCE: get_dashboard_data took 103.69ms
+2025-11-24 18:40:33,044 - [INFO] - PERFORMANCE: get_dashboard_data took 111.22ms
+2025-11-24 18:40:33,096 - [INFO] - Driver 6924594029d249484f3dbd25 status updated to Active
+2025-11-24 18:40:33,232 - [INFO] - PERFORMANCE: get_dashboard_data took 102.86ms
+2025-11-24 18:41:04,503 - [INFO] - PERFORMANCE: get_dashboard_data took 110.90ms
+2025-11-24 18:41:05,758 - [INFO] - PERFORMANCE: get_dashboard_data took 109.54ms
+2025-11-24 18:41:30,884 - [INFO] - PERFORMANCE: get_dashboard_data took 162.50ms
+2025-11-24 18:41:31,222 - [INFO] - Bangalore_Hub created sub-vendor Test123
+2025-11-24 18:41:31,441 - [INFO] - PERFORMANCE: get_dashboard_data took 184.01ms
+2025-11-24 18:42:01,691 - [INFO] - PERFORMANCE: get_dashboard_data took 132.54ms
+2025-11-24 18:42:19,477 - [INFO] - PERFORMANCE: get_dashboard_data took 133.22ms
+2025-11-24 18:42:19,555 - [INFO] - Driver 69242ecf18139e03f380501b status updated to Suspended
+2025-11-24 18:42:19,736 - [INFO] - PERFORMANCE: get_dashboard_data took 131.82ms
+2025-11-24 18:42:22,702 - [INFO] - PERFORMANCE: get_dashboard_data took 145.82ms
+2025-11-24 18:42:22,777 - [INFO] - Driver 69242ecf18139e03f380501b status updated to Active
+2025-11-24 18:42:22,966 - [INFO] - PERFORMANCE: get_dashboard_data took 131.80ms
