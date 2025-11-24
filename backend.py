@@ -128,6 +128,7 @@ class SystemUser(ABC):
         except ValueError: return False
 
 # INHERITANCE: Vendor Logic
+# --- INHERITANCE: Vendor Logic ---
 class Vendor(SystemUser):
     def __init__(self, data, db_handle):
         super().__init__(data['username'], data['role'], db_handle)
@@ -137,17 +138,47 @@ class Vendor(SystemUser):
         self.root_id = data.get('root_id', self.user_id) 
         self.delegated_permissions = data.get('permissions', [])
 
+    # NEW HELPER: Recursively get all IDs in my downline
+    def _get_subtree_ids(self, current_id):
+        direct_children = list(self.db.users.find({"parent_id": current_id}))
+        ids = []
+        for child in direct_children:
+            c_id = str(child['_id'])
+            ids.append(c_id)
+            # Recursion to get children of children
+            ids.extend(self._get_subtree_ids(c_id))
+        return ids
+
     def get_dashboard_data(self):
+        # 1. Get all vendor IDs in my network (Me + Descendants)
+        network_ids = self._get_subtree_ids(self.user_id)
+        all_relevant_ids = [self.user_id] + network_ids
+
+        # 2. Create a Map of ID -> Username for display purposes
+        # We fetch user docs for everyone in the list to map names later
+        relevant_users = list(self.db.users.find({"_id": {"$in": [ObjectId(i) for i in all_relevant_ids]}}))
+        id_name_map = {str(u['_id']): u['username'] for u in relevant_users}
+
+        # 3. Fetch Vehicles and Drivers for the WHOLE network
+        vehicles = list(self.db.vehicles.find({"vendor_id": {"$in": all_relevant_ids}}))
+        drivers = list(self.db.drivers.find({"vendor_id": {"$in": all_relevant_ids}}))
+
+        # 4. Enrich Drivers with "Owner Name" so UI knows if it's yours or a sub-vendor's
+        for d in drivers:
+            d_vid = d.get('vendor_id')
+            d['owner_name'] = "Me" if d_vid == self.user_id else id_name_map.get(d_vid, "Sub-Vendor")
+
         data = {
-            "vehicles": list(self.db.vehicles.find({"vendor_id": self.user_id})),
-            "drivers": list(self.db.drivers.find({"vendor_id": self.user_id})),
+            "vehicles": vehicles,
+            "drivers": drivers,
+            # Direct children only (for the Manage Sub-Vendors tab)
             "sub_vendors": list(self.db.users.find({"parent_id": self.user_id})),
+            "total_network_drivers": len(drivers), # Added this key for app.py
             "my_level": self.level
         }
         return data
 
     def create_sub_vendor(self, username, password, sub_level):
-        # 1. Validation
         if not username.strip(): return False, "Username cannot be empty."
         if len(password) < 7: return False, "Password must be at least 7 characters."
 
@@ -176,14 +207,21 @@ class Vendor(SystemUser):
         self.db.users.insert_one(user_doc)
         logging.info(f"{self.username} created sub-vendor {username}")
         return True, f"Vendor {username} ({sub_level}) created."
-
+    
     def onboard_driver(self, driver_data: DriverModel):
         try:
-            # Pydantic validation happens before this method is called if passed as object,
-            # but if passed as dict we validate here implicitly by accessing .dict()
-            # However, app.py instantiates model first, so validation errors happen there.
-            
             driver_dict = driver_data.dict()
+            
+            # --- NEW: UNIQUENESS CHECKS ---
+            # 1. Check if License Number exists
+            if self.db.drivers.find_one({"license_number": driver_dict['license_number']}):
+                return False, f"Driver with License {driver_dict['license_number']} already exists!"
+
+            # 2. Check if Phone Number exists
+            if self.db.drivers.find_one({"phone": driver_dict['phone']}):
+                return False, f"Driver with Phone {driver_dict['phone']} already exists!"
+            # -------------------------------
+
             if not self.check_compliance(driver_dict['dl_expiry']):
                 return False, "Cannot onboard: Driving License is Expired!"
 
@@ -198,6 +236,13 @@ class Vendor(SystemUser):
     def onboard_vehicle(self, vehicle_data: VehicleModel):
         try:
             v_dict = vehicle_data.dict()
+            
+            # --- NEW: UNIQUENESS CHECK ---
+            # 1. Check if Registration Number exists
+            if self.db.vehicles.find_one({"reg_number": v_dict['reg_number']}):
+                return False, f"Vehicle {v_dict['reg_number']} is already registered!"
+            # -----------------------------
+
             if not all([
                 self.check_compliance(v_dict['rc_expiry']),
                 self.check_compliance(v_dict['pollution_expiry']),
@@ -211,8 +256,34 @@ class Vendor(SystemUser):
             return True, "Vehicle onboarded successfully."
         except Exception as e:
             return False, f"Validation Error: {str(e)}"
+        
+    def update_driver_status(self, driver_id, new_status):
+        try:
+            # 1. Get complete list of valid IDs (Me + My Sub-vendors)
+            # This ensures you can act on drivers deep in your hierarchy
+            hierarchy_ids = self._get_subtree_ids(self.user_id)
+            valid_vendor_ids = [self.user_id] + hierarchy_ids
+            
+            # 2. Update ONLY if the driver belongs to your hierarchy
+            # We match _id AND verify the vendor_id is in your allowed list
+            result = self.db.drivers.update_one(
+                {
+                    "_id": ObjectId(driver_id),
+                    "vendor_id": {"$in": valid_vendor_ids}
+                },
+                {"$set": {"status": new_status}}
+            )
+            
+            if result.matched_count > 0:
+                return True, f"Driver status updated to {new_status}."
+            else:
+                return False, "Driver not found in your hierarchy."
+                
+        except Exception as e:
+            return False, f"Error updating status: {str(e)}"
 
 # INHERITANCE: Super Vendor Logic
+# --- INHERITANCE: Super Vendor Logic ---
 class SuperVendor(Vendor):
     def get_dashboard_data(self):
         # 1. Fetch Hierarchy
@@ -235,30 +306,43 @@ class SuperVendor(Vendor):
         vehicles = list(self.db.vehicles.find({"vendor_id": {"$in": network_ids}}))
         drivers = list(self.db.drivers.find({"vendor_id": {"$in": network_ids}}))
         
-        # --- NEW: ADVANCED ANALYTICS ENGINE ---
+        # --- ADVANCED ANALYTICS ENGINE ---
         
-        # A. Drivers per Vendor (Load Balancing)
+        # A. Drivers per Vendor
         driver_counts = Counter()
         for d in drivers:
             v_name = id_to_name.get(d.get('vendor_id'), 'Unknown Vendor')
             driver_counts[v_name] += 1
             
-        # B. Vehicle Status (Operational Health)
-        vehicle_status = Counter([v.get('status', 'Unknown') for v in vehicles])
-        
-        # C. Fuel Type (Sustainability)
+        # B. Vehicle Status & Fuel
+        vehicle_status = Counter([v.get('status', 'Inactive') for v in vehicles])
         fuel_stats = Counter([v.get('fuel_type', 'Unknown') for v in vehicles])
         
-        # D. Compliance Stats
+        # C. Driver Compliance (Expired Licenses)
         expired_drivers = [d for d in drivers if not self.check_compliance(d.get('dl_expiry', '2000-01-01'))]
+        for d in expired_drivers:
+             d['owner_name'] = id_to_name.get(d.get('vendor_id'), "Unknown")
+
+        # D. NEW: Vehicle Compliance (Expired RC/Pollution/Permit) 
+        non_compliant_vehicles = []
+        for v in vehicles:
+            issues = []
+            if not self.check_compliance(v.get('rc_expiry', '2000-01-01')): issues.append("RC Expired")
+            if not self.check_compliance(v.get('pollution_expiry', '2000-01-01')): issues.append("Pollution Expired")
+            if not self.check_compliance(v.get('permit_expiry', '2000-01-01')): issues.append("Permit Expired")
+            
+            if issues:
+                v['compliance_issues'] = ", ".join(issues)
+                v['owner_name'] = id_to_name.get(v.get('vendor_id'), "Unknown")
+                non_compliant_vehicles.append(v)
         
         return {
             "total_vendors": len(my_network),
             "total_vehicles": len(vehicles),
             "sub_vendors_list": my_network,
-            "compliance_issues": len(expired_drivers),
+            "compliance_issues_count": len(expired_drivers) + len(non_compliant_vehicles),
             "expired_driver_list": expired_drivers,
-            # New Analytics Data
+            "non_compliant_vehicles": non_compliant_vehicles, # New Data Point
             "analytics": {
                 "drivers_by_vendor": dict(driver_counts),
                 "vehicle_status": dict(vehicle_status),
@@ -267,12 +351,13 @@ class SuperVendor(Vendor):
             }
         }
 
+    # Keep existing methods...
     def delegate_access(self, sub_vendor_username, permission):
         result = self.db.users.update_one(
             {"username": sub_vendor_username, "root_id": self.user_id},
             {"$addToSet": {"permissions": permission}}
         )
-        return (True, "Permission granted") if result.modified_count > 0 else (False, "User not found in your network")
+        return (True, "Permission granted") if result.modified_count > 0 else (False, "User not found")
 
     def suspend_vendor(self, vendor_id):
         self.db.users.update_one(
