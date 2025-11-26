@@ -75,7 +75,7 @@ def performance_monitor(func):
 
 # --- CACHING (Optimization Layer) ---
 # Recursive database queries are expensive. 
-# We implement a localized "Time-To-Live" (TTL) cache to store hierarchy trees.
+# Implement "Time-To-Live" (TTL) cache to store hierarchy trees.
 # This prevents hitting the DB repeatedly when navigating the UI.
 class HierarchyCache:
     _cache = {}
